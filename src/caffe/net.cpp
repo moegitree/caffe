@@ -35,7 +35,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
   // Filter layers based on their include/exclude rules and
   // the current NetState.
   NetParameter filtered_param;
-  FilterNet(in_param, &filtered_param);
+  FilterNet(in_param, &filtered_param);     //将in_param根据Train和Test不同阶段以及include/exclude规则做筛选
   LOG(INFO) << "Initializing net from parameters: " << std::endl
             << filtered_param.DebugString();
   // Create a copy of filtered_param with splits added where necessary.
@@ -49,8 +49,8 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       << "Incorrect input blob dimension specifications.";
   memory_used_ = 0;
   // set the input blobs
-  for (int input_id = 0; input_id < param.input_size(); ++input_id) {
-    const int layer_id = -1;  // inputs have fake layer ID -1
+  for (int input_id = 0; input_id < param.input_size(); ++input_id) { //建立输入用blobs，输入用blob认为是-1层的top blob
+    const int layer_id = -1;  // inputs have fake layer ID -1    输入层指定为-1，
     AppendTop(param, layer_id, input_id, &available_blobs, &blob_name_to_idx);
   }
   DLOG(INFO) << "Memory required for data: " << memory_used_ * sizeof(Dtype);
@@ -60,14 +60,14 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
   bottom_id_vecs_.resize(param.layers_size());
   top_id_vecs_.resize(param.layers_size());
   bottom_need_backward_.resize(param.layers_size());
-  for (int layer_id = 0; layer_id < param.layers_size(); ++layer_id) {
-    const LayerParameter& layer_param = param.layers(layer_id);
-    layers_.push_back(shared_ptr<Layer<Dtype> >(GetLayer<Dtype>(layer_param)));
+  for (int layer_id = 0; layer_id < param.layers_size(); ++layer_id) {    //逐一建立网络layer
+    const LayerParameter& layer_param = param.layers(layer_id);           //得到layer的参数
+    layers_.push_back(shared_ptr<Layer<Dtype> >(GetLayer<Dtype>(layer_param)));    //建立layer对象
     layer_names_.push_back(layer_param.name());
     LOG(INFO) << "Creating Layer " << layer_param.name();
     bool need_backward = false;
     // Figure out this layer's input and output
-    for (int bottom_id = 0; bottom_id < layer_param.bottom_size();
+    for (int bottom_id = 0; bottom_id < layer_param.bottom_size();        //逐一建立layer的bottom blob
          ++bottom_id) {
       const int blob_id = AppendBottom(param, layer_id, bottom_id,
                                        &available_blobs, &blob_name_to_idx);
@@ -75,13 +75,13 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       need_backward |= blob_need_backward_[blob_id];
     }
     int num_top = layer_param.top_size();
-    for (int top_id = 0; top_id < num_top; ++top_id) {
+    for (int top_id = 0; top_id < num_top; ++top_id) {                    //逐一建立layer的top blob
       AppendTop(param, layer_id, top_id, &available_blobs, &blob_name_to_idx);
     }
     // If the layer specifies that AutoTopBlobs() -> true and the LayerParameter
     // specified fewer than the required number (as specified by
     // ExactNumTopBlobs() or MinTopBlobs()), allocate them here.
-    Layer<Dtype>* layer = layers_[layer_id].get();
+    Layer<Dtype>* layer = layers_[layer_id].get();                        //如果建立的top blob不符合layer的topBlob数量要求，要额外增加top blob
     if (layer->AutoTopBlobs()) {
       const int needed_num_top =
           std::max(layer->MinTopBlobs(), layer->ExactNumTopBlobs());
@@ -94,8 +94,8 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     }
     // After this layer is connected, set it up.
     LOG(INFO) << "Setting up " << layer_names_[layer_id];
-    layers_[layer_id]->SetUp(bottom_vecs_[layer_id], &top_vecs_[layer_id]);
-    for (int top_id = 0; top_id < top_vecs_[layer_id].size(); ++top_id) {
+    layers_[layer_id]->SetUp(bottom_vecs_[layer_id], &top_vecs_[layer_id]);     //调用layer类对象的SetUp函数，配置建立layer
+    for (int top_id = 0; top_id < top_vecs_[layer_id].size(); ++top_id) {       //如果有loss weight，在SetUp中设置top blob的diff，在blob_loss_weights记录并显示
       if (blob_loss_weights_.size() <= top_id_vecs_[layer_id][top_id]) {
         blob_loss_weights_.resize(top_id_vecs_[layer_id][top_id] + 1, Dtype(0));
       }

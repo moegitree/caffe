@@ -183,6 +183,7 @@ class Net {
   void GetLearningRateAndWeightDecay();
 
   /// @brief Individual layers in the net
+ //这里是开始咯
   vector<shared_ptr<Layer<Dtype> > > layers_;
   vector<string> layer_names_;
   map<string, int> layer_names_index_;

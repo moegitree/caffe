@@ -26,41 +26,41 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       (new_height > 0 && new_width > 0)) << "Current implementation requires "
       "new_height and new_width to be set at the same time.";
   // Read the file with filenames and labels
-  const string& source = this->layer_param_.image_data_param().source();
+  const string& source = this->layer_param_.image_data_param().source();    //通过source读取输入文件的文件名
   LOG(INFO) << "Opening file " << source;
-  std::ifstream infile(source.c_str());
+  std::ifstream infile(source.c_str());     
   string filename;
   int label;
-  while (infile >> filename >> label) {
-    lines_.push_back(std::make_pair(filename, label));
+  while (infile >> filename >> label) {                   //文件中filename和label成行排列
+    lines_.push_back(std::make_pair(filename, label));    //hpp定义vector<std::pair<std::string, int> > lines_;
   }
 
-  if (this->layer_param_.image_data_param().shuffle()) {
+  if (this->layer_param_.image_data_param().shuffle()) {  //如果shuffle参数为true，需要将文件随机打乱
     // randomly shuffle data
     LOG(INFO) << "Shuffling data";
     const unsigned int prefetch_rng_seed = caffe_rng_rand();
     prefetch_rng_.reset(new Caffe::RNG(prefetch_rng_seed));
-    ShuffleImages();
+    ShuffleImages();        //利用Fisher–Yates洗牌算法将从lines_begin到lines_end的文件打乱
   }
   LOG(INFO) << "A total of " << lines_.size() << " images.";
 
-  lines_id_ = 0;
-  // Check if we would need to randomly skip a few data points
-  if (this->layer_param_.image_data_param().rand_skip()) {
+  lines_id_ = 0; 
+  // Check if we would need to randomly skip a few data points    
+  if (this->layer_param_.image_data_param().rand_skip()) {  //如果rand_skip参数为true，需要跳过开头一部分data。这是为了避免多个用户异步训练的情况。
     unsigned int skip = caffe_rng_rand() %
         this->layer_param_.image_data_param().rand_skip();
     LOG(INFO) << "Skipping first " << skip << " data points.";
-    CHECK_GT(lines_.size(), skip) << "Not enough points to skip";
-    lines_id_ = skip;
+    CHECK_GT(lines_.size(), skip) << "Not enough points to skip";   //避免跳过的数据点比整个数据规模还要大
+    lines_id_ = skip;                                       //跳过skip个数据点，从skip个数据点之后开始
   }
-  // Read a data point, and use it to initialize the top blob.
-  Datum datum;
-  CHECK(ReadImageToDatum(lines_[lines_id_].first, lines_[lines_id_].second,
+  // Read a data point, and use it to initialize the top blob.    //只读入一张图片，用于确定top blob的大小
+  Datum datum;                                              //protobuf中定义的Datum类
+  CHECK(ReadImageToDatum(lines_[lines_id_].first, lines_[lines_id_].second,   //io.hpp 用opencv读入图片和label，存入datum中
                          new_height, new_width, &datum));
   // image
-  const int crop_size = this->layer_param_.transform_param().crop_size();
+  const int crop_size = this->layer_param_.transform_param().crop_size();     
   const int batch_size = this->layer_param_.image_data_param().batch_size();
-  if (crop_size > 0) {
+  if (crop_size > 0) {                                      //protobuf是否定义crop的大小，若有则需要裁剪
     (*top)[0]->Reshape(batch_size, datum.channels(), crop_size, crop_size);
     this->prefetch_data_.Reshape(batch_size, datum.channels(), crop_size,
                                  crop_size);
@@ -74,7 +74,7 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << (*top)[0]->channels() << "," << (*top)[0]->height() << ","
       << (*top)[0]->width();
   // label
-  (*top)[1]->Reshape(batch_size, 1, 1, 1);
+  (*top)[1]->Reshape(batch_size, 1, 1, 1);                  //protobuf定义的一次训练batch的大小
   this->prefetch_label_.Reshape(batch_size, 1, 1, 1);
   // datum size
   this->datum_channels_ = datum.channels();
@@ -83,11 +83,11 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->datum_size_ = datum.channels() * datum.height() * datum.width();
 }
 
-template <typename Dtype>
+template <typename Dtype>     //利用Fisher–Yates洗牌算法将从lines_begin到lines_end的文件打乱
 void ImageDataLayer<Dtype>::ShuffleImages() {
   caffe::rng_t* prefetch_rng =
       static_cast<caffe::rng_t*>(prefetch_rng_->generator());
-  shuffle(lines_.begin(), lines_.end(), prefetch_rng);
+  shuffle(lines_.begin(), lines_.end(), prefetch_rng);  //Fisher–Yates洗牌算法实现
 }
 
 // This function is used to create a thread that prefetches the data.
@@ -104,7 +104,7 @@ void ImageDataLayer<Dtype>::InternalThreadEntry() {
 
   // datum scales
   const int lines_size = lines_.size();
-  for (int item_id = 0; item_id < batch_size; ++item_id) {
+  for (int item_id = 0; item_id < batch_size; ++item_id) {      //读batch_size规模数量的图片
     // get a blob
     CHECK_GT(lines_size, lines_id_);
     if (!ReadImageToDatum(lines_[lines_id_].first,

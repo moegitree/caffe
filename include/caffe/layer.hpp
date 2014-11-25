@@ -385,17 +385,19 @@ class Layer {
    * the loss function. Store non-zero loss weights in the diff blob.
    */
   inline void SetLossWeights(vector<Blob<Dtype>*>* top) {
-    const int num_loss_weights = layer_param_.loss_weight_size();
+    const int num_loss_weights = layer_param_.loss_weight_size();  //读取layer_param中的loss_weight的个数，如果大于0，进入下面的if语句
     if (num_loss_weights) {
       CHECK_EQ(top->size(), num_loss_weights) << "loss_weight must be "
           "unspecified or specified once per top blob.";
-      for (int top_id = 0; top_id < top->size(); ++top_id) {
+      for (int top_id = 0; top_id < top->size(); ++top_id) {       //依次读取layer_param的loss_weight
         const Dtype loss_weight = layer_param_.loss_weight(top_id);
         if (loss_weight == Dtype(0)) { continue; }
         this->set_loss(top_id, loss_weight);
-        const int count = (*top)[top_id]->count();
-        Dtype* loss_multiplier = (*top)[top_id]->mutable_cpu_diff();
-        caffe_set(count, loss_weight, loss_multiplier);
+        const int count = (*top)[top_id]->count();                 //top blob的长度
+        Dtype* loss_multiplier = (*top)[top_id]->mutable_cpu_diff();  //top blob的数据头
+        caffe_set(count, loss_weight, loss_multiplier);    //可以参见
+        //caffe_set的定义，在caffe/src/caffe/util/math_functions.cpp中。即将
+        //loss_multiplier开始，长为count的内存数据都置为loss_weight。
       }
     }
   }
